@@ -123,7 +123,7 @@ fn input_dates() -> (Vec<u64>, Vec<u64>) {
                 },
             }
         }
-        if valid == true && format_check == 14 {
+        if valid && format_check == 14 {
             break;
         }
         println!("That is not a valid starting date.");
