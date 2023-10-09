@@ -1,4 +1,4 @@
-use std::io;
+use std::io::{self, Write};
 
 struct MetricDuration {
     giga: u64,
@@ -109,6 +109,7 @@ fn input_dates() -> (Vec<u64>, Vec<u64>) {
 
         let chars = start.trim().chars();
         let mut valid = false;
+        let mut format_check = 0;
         for item in chars {
             match item {
                 '/' => (),
@@ -116,15 +117,18 @@ fn input_dates() -> (Vec<u64>, Vec<u64>) {
                     Some(num) => {
                         start_data.push(num as u64);
                         valid = true;
+                        format_check += 1;
                     }
-                    None => (),
+                    None => valid = false,
                 },
             }
         }
-        if valid == true {
+        if valid == true && format_check == 14 {
             break;
         }
-        println!("That is not a valid starting date.")
+        println!("That is not a valid starting date.");
+        start.clear();
+        start_data.clear();
     }
 
     println!("End:");
@@ -136,6 +140,7 @@ fn input_dates() -> (Vec<u64>, Vec<u64>) {
 
         let chars = end.trim().chars();
         let mut valid = false;
+        let mut format_check = 0;
         for item in chars {
             match item {
                 '/' => (),
@@ -143,15 +148,18 @@ fn input_dates() -> (Vec<u64>, Vec<u64>) {
                     Some(num) => {
                         end_data.push(num as u64);
                         valid = true;
+                        format_check += 1;
                     }
-                    None => (),
+                    None => valid = false,
                 },
             }
         }
-        if valid == true {
+        if valid && format_check == 14 {
             break;
         }
         println!("That is not a valid ending date.");
+        end.clear();
+        end_data.clear();
     }
     (start_data, end_data)
 }
@@ -161,12 +169,7 @@ fn main() {
         "Welcome to the Second System Conversion tool.\nPlease enter a starting date and an ending date in the following format:\nmm/dd/yyyy/hh/mm/ss"
     );
 
-    let mut again = false;
     loop {
-        if again == true {
-            println!("Format: mm/dd/yyyy/hh/mm/ss");
-        }
-
         let input_data = input_dates();
         let start_seconds = time_second(&input_data.0);
         let end_seconds = time_second(&input_data.1);
@@ -181,26 +184,23 @@ fn main() {
             );
 
             let mut again_choice = String::new();
-            let mut no = false;
             println!("Convert another duration?");
             println!("(Enter y or n):");
-            loop {
+            'try_again: loop {
+                io::stdout().flush().expect("Failed to flush stdout");
                 io::stdin()
                     .read_line(&mut again_choice)
                     .expect("Failed to read entry.");
+                again_choice = again_choice.trim().to_ascii_lowercase();
                 match again_choice.as_ref() {
-                    "y" => break,
-                    "n" => {
-                        no = true;
+                    "y" => {
+                        println!("Format: mm/dd/yyyy/hh/mm/ss");
                         break;
                     }
+                    "n" => break 'try_again,
                     _ => println!("Invalid."),
                 }
             }
-            if no == true {
-                break;
-            }
         }
-        again = true;
     }
 }
