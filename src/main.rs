@@ -50,7 +50,7 @@ fn scale_metric(unit: u64) -> MetricDuration {
     conversion
 }
 
-fn time_second(data: &Vec<u64>) -> u64 {
+fn time_second(data: &Vec<u64>, mut valid: bool) -> (u64, bool) {
     let mut seconds: u64 = 0;
     let mut count: u8 = 0;
     for index in data {
@@ -66,15 +66,30 @@ fn time_second(data: &Vec<u64>) -> u64 {
                     7 => seconds += 15_638_400, // July
                     8 => seconds += 18_316_800, // August
                     9 => seconds += 20_995_200, // September
-                    _ => println!("Starting month invalid"),
+                    _ => {
+                        if valid {
+                            println!("Month invalid");
+                            valid = false;
+                        }
+                    }
                 },
                 1 => match data[1] {
                     0 => seconds += 23_587_200, // October
                     1 => seconds += 26_265_600, // November
                     2 => seconds += 28_857_600, // December
-                    _ => println!("Starting month invalid."),
+                    _ => {
+                        if valid {
+                            println!("Month invalid.");
+                            valid = false;
+                        }
+                    }
                 },
-                _ => println!("Starting month invalid."),
+                _ => {
+                    if valid {
+                        println!("Month invalid.");
+                        valid = false;
+                    }
+                }
             },
             2 => seconds += (index * 10) * 86_400, // day x10
             3 => seconds += index * 86_400,        // day
@@ -92,75 +107,51 @@ fn time_second(data: &Vec<u64>) -> u64 {
         }
         count += 1;
     }
-    seconds
+    (seconds, valid)
+}
+
+fn get_data_vec(instance: &str) -> Vec<u64> {
+    let mut data = String::new();
+    let mut data_vec: Vec<u64> = Vec::new();
+    loop {
+        if instance == "start" {
+            println!("Start:");
+        } else if instance == "end" {
+            println!("End:");
+        }
+        io::stdin()
+            .read_line(&mut data)
+            .expect("Failed to read entry.");
+
+        let chars = data.trim().chars();
+        let mut valid = false;
+        let mut format_check = 0;
+        for item in chars {
+            match item {
+                '/' => (),
+                _ => match item.to_digit(10) {
+                    Some(num) => {
+                        data_vec.push(num as u64);
+                        valid = true;
+                        format_check += 1;
+                    }
+                    None => valid = false,
+                },
+            }
+        }
+        if valid && format_check == 14 {
+            break;
+        }
+        println!("That is not a valid date.");
+        data.clear();
+        data_vec.clear();
+    }
+    data_vec
 }
 
 fn input_dates() -> (Vec<u64>, Vec<u64>) {
-    let mut start = String::new();
-    let mut end = String::new();
-    let mut start_data: Vec<u64> = Vec::new();
-    let mut end_data: Vec<u64> = Vec::new();
-    println!("Start:");
-
-    loop {
-        io::stdin()
-            .read_line(&mut start)
-            .expect("Failed to read entry.");
-
-        let chars = start.trim().chars();
-        let mut valid = false;
-        let mut format_check = 0;
-        for item in chars {
-            match item {
-                '/' => (),
-                _ => match item.to_digit(10) {
-                    Some(num) => {
-                        start_data.push(num as u64);
-                        valid = true;
-                        format_check += 1;
-                    }
-                    None => valid = false,
-                },
-            }
-        }
-        if valid && format_check == 14 {
-            break;
-        }
-        println!("That is not a valid starting date.");
-        start.clear();
-        start_data.clear();
-    }
-
-    println!("End:");
-
-    loop {
-        io::stdin()
-            .read_line(&mut end)
-            .expect("Failed to read entry.");
-
-        let chars = end.trim().chars();
-        let mut valid = false;
-        let mut format_check = 0;
-        for item in chars {
-            match item {
-                '/' => (),
-                _ => match item.to_digit(10) {
-                    Some(num) => {
-                        end_data.push(num as u64);
-                        valid = true;
-                        format_check += 1;
-                    }
-                    None => valid = false,
-                },
-            }
-        }
-        if valid && format_check == 14 {
-            break;
-        }
-        println!("That is not a valid ending date.");
-        end.clear();
-        end_data.clear();
-    }
+    let start_data = get_data_vec("start");
+    let end_data = get_data_vec("end");
     (start_data, end_data)
 }
 
@@ -171,13 +162,19 @@ fn main() {
 
     loop {
         let input_data = input_dates();
-        let start_seconds = time_second(&input_data.0);
-        let end_seconds = time_second(&input_data.1);
+        let start_seconds = time_second(&input_data.0, true);
+        let end_seconds: (u64, bool) = if !start_seconds.1 {
+            time_second(&input_data.1, false)
+        } else {
+            time_second(&input_data.1, true)
+        };
 
-        if start_seconds > end_seconds {
+        let mut no = false;
+
+        if start_seconds.0 > end_seconds.0 {
             println!("Ending date must be later than starting date.")
         } else {
-            let time = scale_metric(end_seconds - start_seconds);
+            let time = scale_metric(end_seconds.0 - start_seconds.0);
             println!(
                 "The duration is as follows:\n{} gigaseconds\n{} megaseconds\n{} kiloseconds\n{} hectoseconds\n{} decaseconds\n{} seconds",
                 time.giga, time.mega, time.kilo, time.hecto, time.deca, time.base
@@ -186,7 +183,7 @@ fn main() {
             let mut again_choice = String::new();
             println!("Convert another duration?");
             println!("(Enter y or n):");
-            'try_again: loop {
+            loop {
                 io::stdout().flush().expect("Failed to flush stdout");
                 io::stdin()
                     .read_line(&mut again_choice)
@@ -197,10 +194,16 @@ fn main() {
                         println!("Format: mm/dd/yyyy/hh/mm/ss");
                         break;
                     }
-                    "n" => break 'try_again,
+                    "n" => {
+                        no = true;
+                        break;
+                    }
                     _ => println!("Invalid."),
                 }
             }
+        }
+        if no {
+            break;
         }
     }
 }
