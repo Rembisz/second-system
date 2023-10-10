@@ -149,19 +149,13 @@ fn get_data_vec(instance: &str) -> Vec<u64> {
     data_vec
 }
 
-fn input_dates() -> (Vec<u64>, Vec<u64>) {
-    let start_data = get_data_vec("start");
-    let end_data = get_data_vec("end");
-    (start_data, end_data)
-}
-
 fn main() {
     println!(
         "Welcome to the Second System Conversion tool.\nPlease enter a starting date and an ending date in the following format:\nmm/dd/yyyy/hh/mm/ss"
     );
 
     loop {
-        let input_data = input_dates();
+        let input_data = (get_data_vec("start"), get_data_vec("end"));
         let start_seconds = time_second(&input_data.0, true);
         let end_seconds: (u64, bool) = if !start_seconds.1 {
             time_second(&input_data.1, false)
